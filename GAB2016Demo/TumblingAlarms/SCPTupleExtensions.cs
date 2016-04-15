@@ -1,5 +1,4 @@
-﻿
-namespace AzureEventHubsReaderStormApplication
+﻿namespace EventHubsReaderTopology
 {
     using Microsoft.SCP;
     using Newtonsoft.Json;

@@ -1,13 +1,9 @@
-using Microsoft.SCP;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace EventHubsReaderTopology
 {
-    /// <summary>
-    /// Globally count number of messages
-    /// </summary>
+    using Microsoft.SCP;
+    using System;
+    using System.Collections.Generic;
+
     public class AlarmsSensorBolt : ISCPBolt
     {
         Context ctx;

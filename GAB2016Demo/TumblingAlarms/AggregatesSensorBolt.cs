@@ -1,17 +1,17 @@
-using System;
-using System.Collections.Generic;
-using Microsoft.SCP;
-using System.Diagnostics;
-using System.Linq;
-using AzureEventHubsReaderStormApplication;
-
 namespace EventHubsReaderTopology
 {
+    using Microsoft.SCP;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+
     public class AggregateSensorBolt : ISCPBolt
     {
         Context ctx;
 
         Queue<SCPTuple> tuplesToAck = new Queue<SCPTuple>();
+
+        Dictionary<string, List<double>> _data = new Dictionary<string, List<double>>();
 
         public AggregateSensorBolt(Context ctx)
         {
@@ -26,7 +26,7 @@ namespace EventHubsReaderTopology
 
             // set output schemas
             Dictionary<string, List<Type>> outputSchema = new Dictionary<string, List<Type>>();
-            outputSchema.Add(Constants.DEFAULT_STREAM_ID, new List<Type>() { typeof(string),typeof(double) });
+            outputSchema.Add(Constants.DEFAULT_STREAM_ID, new List<Type>() { typeof(string), typeof(double) });
 
             // Declare input and output schemas
             this.ctx.DeclareComponentSchema(new ComponentStreamSchema(inputSchema, outputSchema));
@@ -45,18 +45,12 @@ namespace EventHubsReaderTopology
             {
                 Context.Logger.Info("Aggregates tuple values..");
 
-                var sensors = tuplesToAck
-                    .Select(s => s.GetSensor())
-                    .GroupBy(s => s.Name);
-
-                foreach(var item in sensors)
+                foreach (var key in _data.Keys)
                 {
-                    var avg = item.Select(s => s.Value)
-                        .Average();
+                    var avg = _data[key].Average();
 
-                    this.ctx.Emit(Constants.DEFAULT_STREAM_ID, tuplesToAck, new Values(item.Key,avg));
+                    this.ctx.Emit(Constants.DEFAULT_STREAM_ID, tuplesToAck, new Values(key, avg));
                 }
-
 
                 Context.Logger.Info("acking the batch: " + tuplesToAck.Count);
 
@@ -65,11 +59,24 @@ namespace EventHubsReaderTopology
                     this.ctx.Ack(t);
                 }
 
+                _data.Clear();
                 tuplesToAck.Clear();
 
             }
             else
             {
+                var sensorName = tuple.GetString(0);
+                var value = tuple.GetDouble(1);
+
+                if (!_data.ContainsKey(tuple.GetString(0)))
+                {
+                    _data.Add(sensorName, new List<double>() { value });
+                }
+                else
+                {
+                    _data[sensorName].Add(value);
+                }
+
                 tuplesToAck.Enqueue(tuple);
             }
         }
